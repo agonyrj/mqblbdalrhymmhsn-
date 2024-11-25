@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>البرق لتأجير السيارات</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: url('https://i.postimg.cc/wMJgvqhD/image.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #3ff;
+      margin: 0;
+      padding: 0;
+      direction: rtl;
+    }
+
+    .overlay {
+      min-height: 100vh;
+      padding: 20px;
+      background: rgba(.0, 20, 0, 0.10);
+    }
+
+    .header,
+    .subheading {
+      text-align: center;
+      color: #ffcc00;
+    }
+
+    .header {
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    .subheading {
+      font-size: 24px;
+      margin-bottom: 30px;
+    }
+
+    .form-container {
+      background-color: rgba(200, 200, 200, 0.20);
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 800px;
+      margin: auto;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.10);
+    }
+
+    .form-container input,
+    .form-container select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    .form-container input[type="submit"] {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .form-container input[type="submit"]:hover {
+      background-color: #0056b3;
+    }
+
+    .table-container {
+      margin-top: 30px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table th,
+    table td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: center;
+    }
+
+    table th {
+      background-color: #001bff;
+      color: white;
+    }
+
+    table tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    .search-container {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .search-container input {
+      width: 50%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="overlay">
+    <div class="header">البرق لتأجير السيارات</div>
+    <div class="subheading">إدارة العملاء بسهولة وكفاءة</div>
+
+    <!-- نموذج إضافة بيانات العملاء -->
+    <div class="form-container">
+      <h2>إضافة بيانات العملاء</h2>
+      <form id="carRentalForm">
+        <input type="text" id="customerName" placeholder="اسم العميل" required>
+        <input type="text" id="idNumber" placeholder="البطاقة الشخصية/الإقامة" required>
+        <input type="text" id="phoneNumber" placeholder="رقم الهاتف" required>
+        <input type="text" id="license" placeholder="رخصة القيادة" required>
+        <select id="carType" required>
+          <option value="كورولا">تويوتا كورولا</option>
+          <option value="سنترا">نيسان سنترا</option>
+          <option value="لانترا">هيونداي لانترا</option>
+          <option value="كيا">كيا</option>
+        </select>
+        <input type="text" id="plateNumber" placeholder="رقم اللوحة" required>
+        <input type="date" id="pickupDate" required>
+        <input type="date" id="returnDate" required>
+        <input type="number" id="daysCount" placeholder="عدد الأيام" required>
+        <input type="number" id="price" placeholder="السعر لكل يوم" required>
+        <input type="text" id="totalPrice" readonly placeholder="الإجمالي" required>
+        <input type="text" id="contractNumber" placeholder="رقم العقد" required>
+        <input type="submit" value="إضافة العميل">
+      </form>
+    </div>
+
+    <!-- زر لحفظ البيانات في Excel -->
+    <div style="text-align: center; margin-top: 20px;">
+      <button id="saveToExcel">حفظ إلى Excel</button>
+      <input type="file" id="fileInput" />
+    </div>
+
+    <!-- جدول عرض بيانات العملاء -->
+    <div class="table-container">
+      <h2>قائمة العملاء</h2>
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="ابحث عن اسم العميل..." oninput="filterCustomers()">
+      </div>
+      <table id="customerTable">
+        <thead>
+          <tr>
+            <th>اسم العميل</th>
+            <th>رقم البطاقة</th>
+            <th>رقم الهاتف</th>
+            <th>نوع السيارة</th>
+            <th>عدد الأيام</th>
+            <th>السعر الإجمالي</th>
+            <th>رقم العقد</th>
+            <th>التحكم</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- بيانات العملاء ستضاف هنا -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // مصفوفة لتخزين جميع بيانات العملاء
+    const allCustomers = [];
+    // تحديث السعر الإجمالي تلقائيًا
+    document.getElementById("price").addEventListener("input", calculateTotal);
+    document.getElementById("daysCount").addEventListener("input", calculateTotal);
+
+    function calculateTotal() {
+      const price = parseFloat(document.getElementById("price").value) || 0;
+      const days = parseInt(document.getElementById("daysCount").value) || 0;
+      document.getElementById("totalPrice").value = price * days + " ريال";
+    }
+    // إضافة بيانات العميل عند إرسال النموذج
+    document.getElementById("carRentalForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+      const customer = {
+        "اسم العميل": document.getElementById("customerName").value,
+        "رقم البطاقة": document.getElementById("idNumber").value,
+        "رقم الهاتف": document.getElementById("phoneNumber").value,
+        "رخصة القيادة": document.getElementById("license").value,
+        "نوع السيارة": document.getElementById("carType").value,
+        "رقم اللوحة": document.getElementById("plateNumber").value,
+        "تاريخ الاستلام": document.getElementById("pickupDate").value,
+        "تاريخ الإرجاع": document.getElementById("returnDate").value,
+        "عدد الأيام": document.getElementById("daysCount").value,
+        "السعر لكل يوم": document.getElementById("price").value,
+        "الإجمالي": document.getElementById("totalPrice").value,
+        "رقم العقد": document.getElementById("contractNumber").value
+      };
+      allCustomers.push(customer);
+      const newRow = document.createElement("tr");
+      newRow.innerHTML = `
+        <td>${customer["اسم العميل"]}</td>
+        <td>${customer["رقم البطاقة"]}</td>
+        <td>${customer["رقم الهاتف"]}</td>
+        <td>${customer["نوع السيارة"]}</td>
+        <td>${customer["عدد الأيام"]}</td>
+        <td>${customer["الإجمالي"]}</td>
+        <td>${customer["رقم العقد"]}</td>
+        <td>
+          <button onclick="editCustomer(this)">تعديل</button>
+          <button onclick="deleteCustomer(this)">حذف</button>
+        </td>
+      `;
+      document.querySelector("#customerTable tbody").appendChild(newRow);
+      document.getElementById("carRentalForm").reset();
+      document.getElementById("totalPrice").value = "";
+    });
+    // تعديل بيانات العميل
+    function editCustomer(button) {
+      const row = button.closest("tr");
+      const cells = row.querySelectorAll("td");
+      document.getElementById("customerName").value = cells[0].textContent;
+      document.getElementById("idNumber").value = cells[1].textContent;
+      document.getElementById("phoneNumber").value = cells[2].textContent;
+      document.getElementById("carType").value = cells[3].textContent;
+      document.getElementById("daysCount").value = parseInt(cells[4].textContent);
+      document.getElementById("totalPrice").value = cells[5].textContent;
+      document.getElementById("contractNumber").value = cells[6].textContent;
+      deleteCustomer(button);
+    }
+    // حذف بيانات العميل
+    function deleteCustomer(button) {
+      const row = button.closest("tr");
+      const index = row.rowIndex - 1;
+      allCustomers.splice(index, 1);
+      row.remove();
+    }
+    // البحث عن العملاء
+    function filterCustomers() {
+      const searchValue = document.getElementById("searchInput").value.toLowerCase();
+      const rows = document.querySelectorAll("#customerTable tbody tr");
+      rows.forEach(row => {
+        const customerName = row.cells[0].textContent.toLowerCase();
+        row.style.display = customerName.includes(searchValue) ? "" : "none";
+      });
+    }
+    // حفظ البيانات في ملف Excel
+    document.getElementById("saveToExcel").addEventListener("click", function() {
+      if (allCustomers.length === 0) {
+        alert("لا توجد بيانات لحفظها!");
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(allCustomers);
+      XLSX.utils.book_append_sheet(wb, ws, "العملاء");
+      XLSX.writeFile(wb, "بيانات_العملاء.xlsx");
+    });
+    // تحميل البيانات من ملف Excel
+    document.getElementById("fileInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = e.target.result;
+        const workbook = XLSX.read(data, {
+          type: "binary"
+        });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        rows.forEach(row => {
+          allCustomers.push(row);
+          const newRow = document.createElement("tr");
+          newRow.innerHTML = `
+            <td>${row["اسم العميل"]}</td>
+            <td>${row["رقم البطاقة"]}</td>
+            <td>${row["رقم الهاتف"]}</td>
+            <td>${row["نوع السيارة"]}</td>
+            <td>${row["عدد الأيام"]}</td>
+            <td>${row["الإجمالي"]}</td>
+            <td>${row["رقم العقد"]}</td>
+            <td>
+              <button onclick="editCustomer(this)">تعديل</button>
+              <button onclick="deleteCustomer(this)">حذف</button>
+            </td>
+          `;
+          document.querySelector("#customerTable tbody").appendChild(newRow);
+        });
+      };
+      reader.readAsBinaryString(file);
+    });
+  </script>
+</body>
+
+</html>
